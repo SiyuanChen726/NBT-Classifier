@@ -294,7 +294,6 @@ def get_TC_predictions(wsi_pt, mask_path, args):
 
 
 
-
 def run_TC_one_slide(wsi, mask_pt, TC, oututDir, patch_size=128, foreground_thes=0.7):
     mask_arr = np.array(Image.open(mask_pt))
     mask_path = f'{oututDir}/{os.path.basename(mask_pt)}'.replace(".png", ".npy")
@@ -329,12 +328,12 @@ def run_TC_one_slide(wsi, mask_pt, TC, oututDir, patch_size=128, foreground_thes
 
 
 
-
 def TC_pred(crop_norm, TC):
     input_img = np.expand_dims(np.array(crop_norm), axis=0)
     input_img = tf.keras.applications.mobilenet.preprocess_input(input_img)
     TC_epi, TC_str, TC_adi = TC.predict(input_img)[0]
     return TC_epi, TC_str, TC_adi
+
 
 
 # plot the WSI TC map
@@ -353,36 +352,51 @@ def plot_TCmap(tissue_map, require_bounds):
 ##########################################################################################################
 # for task run_bbx
 ##########################################################################################################
-
-# modify TC mask to get connected epithelial objects
-def process_TCmask(wsi_pt, TC_maskpt, upsample, small_objects, roi_width):
+def process_TCmask(wsi_pt, TC_maskpt, level, threshold, small_objects):
     wsi = openslide.OpenSlide(wsi_pt)
     mask_TC = np.load(TC_maskpt)
-    
-    # calculate the size of small_objects on the mask
-    wsi_mask_ratio = wsi.level_dimensions[0][0] / mask_TC.shape[1] / upsample
-    small_objects = small_objects / wsi_mask_ratio
-    # calculate the size of width between inner and outer bbxes on the mask
-    mpp = float(wsi.properties['openslide.mpp-x'])
-    roi_width = int(roi_width / float(mpp) / wsi_mask_ratio) 
-    
-    # get a bigger epithelium mask
-    epi_mask = mask_TC.copy()
-    epi_mask = np.argmax(epi_mask, axis=-1)
-    epi_mask[mask_TC[:,:,0]==0] = 99
-    epi_mask[epi_mask != 0] = 99
-    epi_mask[epi_mask == 0] = 1
-    epi_mask[epi_mask == 99] = 0
-    epi_mask = cv2.resize(np.uint8(epi_mask * 255), (epi_mask.shape[1]*upsample, epi_mask.shape[0]*upsample), interpolation=cv2.INTER_CUBIC) 
-    epi_mask = np.array(epi_mask) > 0 
-    
-    # remove object area less than small_objects
+
+    epi_mask = mask_TC[:, :, 0].copy()
+    # print(epi_mask.shape)
+    epi_mask = cv2.resize(np.uint8(epi_mask * 255), (wsi.level_dimensions[level][0], wsi.level_dimensions[level][1]), interpolation=cv2.INTER_CUBIC) 
+    # print(epi_mask.shape)
+
+    epi_mask = np.array(epi_mask) > threshold * 255
     epi_mask = morphology.remove_small_objects(epi_mask.astype(bool), small_objects) 
-    # fill small holes
     epi_mask = morphology.remove_small_holes(epi_mask.astype(bool), small_objects)
     epi_mask = epi_mask.astype("uint8")
+    
+    return epi_mask
 
-    return epi_mask, roi_width, wsi_mask_ratio
+
+# def process_TCmask(wsi_pt, TC_maskpt, upsample, small_objects, roi_width):
+#     wsi = openslide.OpenSlide(wsi_pt)
+#     mask_TC = np.load(TC_maskpt)
+    
+#     # calculate the size of small_objects on the mask
+#     wsi_mask_ratio = wsi.level_dimensions[0][0] / mask_TC.shape[1] / upsample
+#     small_objects = small_objects / wsi_mask_ratio
+#     # calculate the size of width between inner and outer bbxes on the mask
+#     mpp = float(wsi.properties['openslide.mpp-x'])
+#     roi_width = int(roi_width / float(mpp) / wsi_mask_ratio) 
+    
+#     # get a bigger epithelium mask
+#     epi_mask = mask_TC.copy()
+#     epi_mask = np.argmax(epi_mask, axis=-1)
+#     epi_mask[mask_TC[:,:,0]==0] = 99
+#     epi_mask[epi_mask != 0] = 99
+#     epi_mask[epi_mask == 0] = 1
+#     epi_mask[epi_mask == 99] = 0
+#     epi_mask = cv2.resize(np.uint8(epi_mask * 255), (epi_mask.shape[1]*upsample, epi_mask.shape[0]*upsample), interpolation=cv2.INTER_CUBIC) 
+#     epi_mask = np.array(epi_mask) > 0 
+    
+#     # remove object area less than small_objects
+#     epi_mask = morphology.remove_small_objects(epi_mask.astype(bool), small_objects) 
+#     # fill small holes
+#     epi_mask = morphology.remove_small_holes(epi_mask.astype(bool), small_objects)
+#     epi_mask = epi_mask.astype("uint8")
+
+#     return epi_mask, roi_width, wsi_mask_ratio
 
 
 
@@ -432,7 +446,7 @@ def bbx_overlay(epi_mask, overlay_pt, roi_width, threshold=1):
 
     
 # get roi ids for all ROIs detected on the WSI
-def get_roi_ids(epi_mask, wsi_id, roi_width, upsample, wsi_mask_ratio, threshold=1):
+def get_roi_ids(epi_mask, wsi_id, roi_width, wsi_mask_ratio, threshold=1):
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(epi_mask, connectivity=8)
     roi_ids = []
     for i in range(1, num_labels):
@@ -505,7 +519,6 @@ def show_roi(wsi, roi_id):
     
 
 
-
 def parse_patch_id(patch_id):
     _,_,_,_,grid_x,grid_y,patch_size = patch_id.split('_')[-7:]
     orig_x = int(int(grid_x) * int(patch_size))
@@ -526,20 +539,19 @@ def show_patch(wsi, patch_id, save_pt = None):
 
 
 
-
-def save_patchcsv(roi_ids, patch_size, TC_maskpt, output_dir):
+def save_patchcsv(roi_ids, patch_size, TC_maskpt, output_dir=None):
     patch_dict = {"roi_id": [], "patch_id": [], "cls": [], "TC_epi": [], "TC_str": [], "TC_adi": []}
     for roi_id in roi_ids:
         roi_id2patch_id(roi_id, patch_size, TC_maskpt, patch_dict)
 
     patch_df = pd.DataFrame.from_dict(patch_dict)
     # patch_df = patch_df.loc[patch_df['cls'] != "adipocytes", :]
-    patch_df["cohort"] = os.path.basename(output_dir)
-    patch_df["wsi_id"] = os.path.basename(output_dir)
-
-    patch_csv = f"{output_dir}/{os.path.basename(output_dir)}_patch.csv"
-    patch_df.to_csv(patch_csv, index=False)
-    print(f"{patch_csv} saved!")
+    if output_dir is not None:
+        patch_df["cohort"] = os.path.basename(output_dir)
+        patch_df["wsi_id"] = os.path.basename(output_dir)
+        patch_csv = f"{output_dir}/{os.path.basename(output_dir)}_patch.csv"
+        patch_df.to_csv(patch_csv, index=False)
+        print(f"{patch_csv} saved!")
 
     return patch_df
 
@@ -565,6 +577,7 @@ def plot_multiple(img_list, caption_list, grid_x, grid_y, figure_size, cmap, sav
         plt.savefig(save_pt, pad_inches=0, bbox_inches="tight")
 
 
+
 def plot_oneline(img_list, caption_list, figure_size, save_pt=None):
     fig, axes = plt.subplots(1, len(img_list), figsize=figure_size)
  
@@ -579,10 +592,6 @@ def plot_oneline(img_list, caption_list, figure_size, save_pt=None):
                 axes[index].set_title(f"{np.around(caption_i, 2)}")
     if save_pt is not None:
         plt.savefig(save_pt,pad_inches=0, bbox_inches="tight", dpi=300)
-
-
-
-
 
 
 ##########################################################################################################
@@ -638,57 +647,6 @@ def build_poly(tx: np.ndarray, ty: np.ndarray, bx: np.ndarray, by: np.ndarray) -
     
 
 
-def get_json_from_map(TC_cls, cls_dict, json_pt, patch_size, require_bounds=False):
-
-    cls_df = {'orig_x': [], 'orig_y': [], 'cls': []}
-    for x in range(TC_cls.shape[1]):
-        for y in range(TC_cls.shape[0]):
-            cls_df['orig_x'].append(int(x * patch_size))
-            cls_df['orig_y'].append(int(y * patch_size))
-            cls_df['cls'].append(TC_cls[y, x])
-
-    cls_df = pd.DataFrame.from_dict(cls_df)
-    cls_df = cls_df.loc[cls_df['cls']!=3, ]
-
-    # get TC json
-    tx = np.array(cls_df['orig_x']).astype("int")
-    ty = np.array(cls_df['orig_y']).astype("int")
-    bx = np.array([i+ patch_size for i in cls_df['orig_x']]).astype("int")
-    by = np.array([i+ patch_size for i in cls_df['orig_y']]).astype("int")
-
-    if require_bounds:
-        bounds_x = int(wsi.properties['openslide.bounds-x'])
-        bounds_y = int(wsi.properties['openslide.bounds-y'])
-        tx = np.array(tx-bounds_x).astype("int")
-        ty = np.array(ty-bounds_y).astype("int")
-        bx = np.array(bx-bounds_x).astype("int")
-        by = np.array(by-bounds_y).astype("int")
-
-    names = [get_keys_from_value(cls_dict, i) for i in cls_df['cls']]
-    values = list(cls_df['cls'])
-
-    # Build shape and simplify the shapes if True
-    polys_x, polys_y = build_poly(tx=tx, ty=ty, bx=bx, by=by)
-    cmap = build_disrete_cmap(number=4)
-    
-    coords = {}
-    for i in range(len(polys_x)):
-        color = 255 * np.array(cmap(int(values[i])))[:3]
-        coords['poly{}'.format(i)] = {
-            "coords": np.vstack((polys_x[i], polys_y[i])).tolist(),
-            "class": str(names[i]), 
-            "name": str(names[i]), 
-            "color": [int(color[0]), int(color[1]), int(color[2])]
-            }
-
-    if json_pt is not None:
-        with open(json_pt, 'w') as outfile:
-            json.dump(coords, outfile)
-        print(f"{json_pt} saved!")
-
-
-
-
 
 def getROIxy(patch_id):
     _,_,_,_,grid_x,grid_y, patch_size = patch_id.split("_")[-7:]
@@ -710,14 +668,7 @@ def addWSIxy(df):
 
 
 
-
-
-    
-def get_json_from_ROI(cls_df, cls_dict, patch_size, json_pt, require_bounds=False):
-
-    cls_df = addWSIxy(cls_df)
-    
-    # get TC json
+def get_JSON(cls_df, cls_dict, json_pt, patch_size, require_bounds=False):
     tx = np.array(cls_df['orig_x']).astype("int")
     ty = np.array(cls_df['orig_y']).astype("int")
     bx = np.array([i+ patch_size for i in cls_df['orig_x']]).astype("int")
@@ -732,7 +683,7 @@ def get_json_from_ROI(cls_df, cls_dict, patch_size, json_pt, require_bounds=Fals
         by = np.array(by-bounds_y).astype("int")
 
     names = list(cls_df['cls'])
-    values =  [cls_dict[i] for i in list(cls_df['cls'])]
+    values = [cls_dict[i] for i in cls_df['cls']]
 
     # Build shape and simplify the shapes if True
     polys_x, polys_y = build_poly(tx=tx, ty=ty, bx=bx, by=by)
@@ -752,6 +703,9 @@ def get_json_from_ROI(cls_df, cls_dict, patch_size, json_pt, require_bounds=Fals
         with open(json_pt, 'w') as outfile:
             json.dump(coords, outfile)
         print(f"{json_pt} saved!")
+
+
+
 ##########################################################################################################
 # for CAM visualisation
 ##########################################################################################################
@@ -854,6 +808,47 @@ def get_gradCAM(img_path, model, last_conv_layer_name, pred_index=None):
 
     return preds, CAM, cam_heatmap, super_imposed_cam
 
+
+
+def overlay_patch_sampled(patch_df, wsi_pt, patch_size, save_folder):
+    cls_dict = {"adipocytes":0,  "epithelium": 1, "stroma":2}
+    
+    wsi = openslide.OpenSlide(wsi_pt)
+    patch_size, _ = parse_patch_size(wsi, patch_size=patch_size)
+
+    level_max = wsi.level_count - 1
+    wsi_level = np.array(wsi.read_region((0,0), level_max, wsi.level_dimensions[level_max]).convert("RGB"))
+    down_ratio = wsi.level_downsamples[level_max]
+    
+    patch_map = np.zeros((wsi_level.shape[0], wsi_level.shape[1]))
+    patch_id_list = list(patch_df["patch_id"])
+    cls_list = list(patch_df["cls"])
+    
+    for patch_id, cls_i in zip(patch_id_list, cls_list):
+        cls_i = cls_dict[cls_i]
+        grid_x, grid_y, patch_size = patch_id.split("_")[-3:]
+        grid_x, grid_y, patch_size = int(grid_x), int(grid_y), int(patch_size)
+        
+        x1 = int(grid_x * patch_size // down_ratio)
+        y1 = int(grid_y * patch_size // down_ratio)
+        
+        x2 = np.min([patch_map.shape[0], int(x1+patch_size//down_ratio)])
+        y2 = np.min([patch_map.shape[1], int(y1+patch_size//down_ratio)])
+        patch_map[y1:y2, x1:x2] = int(cls_i)  # 0,1,2,3
+    
+    # plt.figure()
+    color = ["white", "Red", "Green"] 
+    sns.set_palette(color)
+    
+    heatmap = sns.heatmap(patch_map, cmap = sns.color_palette(), alpha = 0.5, 
+                          xticklabels=False, yticklabels=False)
+    heatmap.imshow(wsi_level,
+                   aspect = heatmap.get_aspect(),
+                   extent = heatmap.get_xlim() + heatmap.get_ylim(),
+                   zorder = 0)
+    
+    return heatmap.get_figure()
+    
 
 
 
