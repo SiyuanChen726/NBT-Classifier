@@ -1,6 +1,7 @@
 import os
 os.chdir("/scratch/users/k21066795/prj_normal/awesome_normal_breast/scripts")
 import glob
+import random
 import argparse
 import numpy as np
 import pandas as pd
@@ -9,7 +10,6 @@ import openslide
 from PIL import Image
 import matplotlib.pyplot as plt
 from utils import parse_patch_size,process_TCmask,bbx_overlay,get_roi_ids,roi_id2patch_id,save_patchcsv
-import random
 
 
 
@@ -21,10 +21,16 @@ def run_bbx(args):
         print(wsi_id)
         output_dir=f"{args.TC_output}/{wsi_id}"
 
-        if len(glob.glob(f"{output_dir}/{wsi_id}_TC*mask.npy")) > 0:
-            TC_maskpt = glob.glob(f"{output_dir}/{wsi_id}_TC*mask.npy")[0] 
+        TC_maskpt = glob.glob(f"{output_dir}/{wsi_id}_TC*mask.npy")
+        if TC_maskpt:
+            TC_maskpt = TC_maskpt[0]
+            
             wsi_pt = glob.glob(f"{args.WSI}/{wsi_id}*.*")[0] 
-            wsi = openslide.OpenSlide(wsi_pt)
+            try:
+                wsi = openslide.OpenSlide(wsi_pt)
+            except Exception as e:
+                print(f"Error opening WSI {wsi_pt}: {e}")
+                continue
         
             patch_size, _ = parse_patch_size(wsi, patch_size=args.patch_size)
             epi_mask, roi_width, wsi_mask_ratio = process_TCmask(wsi_pt, TC_maskpt, args.upsample, args.small_objects, args.roi_width) 
@@ -32,7 +38,7 @@ def run_bbx(args):
             if args.save_bbxpng:
                 overlay_pt = f"{output_dir}/{wsi_id}_bbx.png"
                 if not os.path.exists(overlay_pt): 
-                    bbx_map = bbx_overlay(epi_mask, overlay_pt, roi_width)
+                    bbx_overlay(epi_mask, overlay_pt, roi_width)
                     print(f"{overlay_pt} saved!")
     
             if args.save_patchcsv:
@@ -45,10 +51,8 @@ def run_bbx(args):
 
 
 parser = argparse.ArgumentParser(description="Run Tissue-Classifier to get a 3-class mask")
-
 parser.add_argument("--WSI", type=str, help="the folder storing foreground masks")
 parser.add_argument("--TC_output", type=str, help="the folder containing output files from running Tissue-Classifier")
-
 parser.add_argument("--patch_size", type=int, default=128, help="the fix patch size (um)")
 parser.add_argument("--upsample", type=int, default=32, help="upsample the tissue type mask {upsample} times")
 parser.add_argument("--small_objects", type=int, default=400000, help="small objects/holes under this pixel size (at 40x magnification) will be removed or filled, for example, 400000 pixels at 40x are approximately 1.5 patches of 512x512 pixels; use 50000 for 20x")
@@ -57,10 +61,6 @@ parser.add_argument("--save_bbxpng", action='store_true', help="whether localise
 parser.add_argument("--save_patchcsv", action='store_true', help="whether localise perilobular regions and save a .csv file storing patches classes and coordinates")
 
 
-
 args = parser.parse_args()
 run_bbx(args)
 print("Localising ROIs and tessellation finished!")
-
-
-
