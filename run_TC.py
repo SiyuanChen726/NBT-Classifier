@@ -6,7 +6,7 @@ import time
 import random
 from PIL import Image
 import openslide
-from utils import get_wsiname, Reinhard, SlideIterator, get_TC, WsiNpySequence, parse_patch_size, get_TC_predictions
+from utils import get_wsiname, SlideIterator, get_TC, WsiNpySequence, parse_patch_size, get_TC_predictions
 
 
 
