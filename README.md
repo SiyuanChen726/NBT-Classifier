@@ -4,8 +4,12 @@
 
 
 ## Installation
-To get started, clone the repository and install the required dependencies. 
+To get started, clone the repository, install [HistoQC](https://github.com/choosehappy/HistoQC.git) and other required dependencies. 
 ```
+git clone https://github.com/SiyuanChen726/NBT-Classifier.git
+cd NBT-Classifier
+conda env create -f environment.yml
+conda activate tfgpu-env
 ```
 
 ## Implementation
