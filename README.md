@@ -13,5 +13,7 @@ conda activate tfgpu-env
 ```
 
 ## Implementation
+For a full implementation of **_NBT-Classifier_**, please refer to [notebook pipeline](pipeline.ipynb). Or use the following script:
 ```
+python main.py
 ```
