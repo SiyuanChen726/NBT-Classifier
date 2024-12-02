@@ -13,7 +13,61 @@ conda activate tfgpu-env
 ```
 
 ## Implementation
-For a full implementation of **_NBT-Classifier_**, please refer to [notebook pipeline](pipeline.ipynb). Or use the following script:
+
+WSI data is expected to be organised as follows:
+```
+prj_BreastAgeNet/
+├── CLINIC/clinicData_all.csv
+├── WSIs
+│   ├── KHP/slide1.ndpi, slide2.ndpi ...
+│   ├── NKI/slide1.mrxs, ...
+│   ├── BCI/slide1.ndpi, ...
+│   ├── EPFL/slide1.vsi, ...
+│   └── SGK/slide1.svs, ...
+```
+
+First, implement HistoQC to detect foreground tissue regions:
 ```
 python main.py
 ```
+This step yields:
+```
+prj_BreastAgeNet/
+├── WSIs
+├── QC/KHP
+│   ├── slide1/slide1_maskuse.png
+│   └── ...
+```
+
+
+
+
+This step yields:
+```
+prj_BreastAgeNet/
+├── WSIs
+├── QC/KHP
+│   ├── slide1/slide1_maskuse.png
+│   └── ...
+├── TC/KHP
+│   ├── slide1/slide1_TCmask.png
+│   └── ...
+```
+
+
+This step yields:
+```
+prj_BreastAgeNet/
+├── WSIs
+├── QC/KHP
+│   ├── slide1/slide1_maskuse.png
+│   └── ...
+├── TC/KHP
+│   ├── slide1/slide1_TCmask.png
+│   └── ...
+├── Features/KHP
+│   ├── slide1/slide1_patch.csv
+│   └── ...
+```
+
+For a full implementation of **_NBT-Classifier_**, please refer to [notebook pipeline](pipeline.ipynb). 
