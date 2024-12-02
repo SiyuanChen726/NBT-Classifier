@@ -95,7 +95,7 @@ parser.add_argument("--free_space", type=bool, default=True, help="Remove the in
 parser.add_argument("--WSI", type=str, help="the folder storing foreground masks")
 parser.add_argument("--MASK", type=str, help="the folder storing foreground masks")
 parser.add_argument("--TC_output", type=str, help="the folder containing output files from running Tissue-Classifier")
-parser.add_argument("--WEIGHT", type=str, default='/scratch/prj/cb_normalbreast/Siyuan/prj_normal/BreastAgeNet/ckpts/Tissue_Classifier.h5', help="the path of the weights for Tissue-Classifier")
+parser.add_argument("--WEIGHT", type=str, default='data/MobileNet512px.h5', help="the path of the weights for Tissue-Classifier")
 parser.add_argument("--foreground_thes", type=float, default=0.7, help="Only process patches with tissue area over this threshold")
 parser.add_argument("--patch_size", type=int, default=128, help="the fix patch size (um)")
 
