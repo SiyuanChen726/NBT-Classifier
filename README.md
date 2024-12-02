@@ -39,8 +39,18 @@ prj_BreastAgeNet/
 │   └── ...
 ```
 
-
-
+Then, use the following script to classify NBT tissue components:
+```
+python run_TC.py \
+  --WSI /path/to/WSI/directory \
+  --MASK /path/to/mask/directory \
+  --TC_output /path/to/output/directory \
+  --WEIGHT /path/to/tissue_classifier_weights.h5 \
+  --foreground_thes 0.7 \
+  --patch_size 128 \
+  --save_TCmap True \
+  --free_space True \
+```
 
 This step yields:
 ```
@@ -54,7 +64,18 @@ prj_BreastAgeNet/
 │   └── ...
 ```
 
-
+Finally, use the following script to classify NBT tissue components:
+```
+python run_bbx.py \
+  --WSI /path/to/WSI/directory \
+  --TC_output /path/to/output/directory \
+  --patch_size 128 \
+  --upsample 32 \
+  --small_objects 400000 \
+  --roi_width 250 \
+  --save_bbxpng \
+  --save_patchcsv
+```
 This step yields:
 ```
 prj_BreastAgeNet/
