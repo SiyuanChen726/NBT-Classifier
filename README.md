@@ -28,7 +28,7 @@ prj_BreastAgeNet/
 
 First, implement HistoQC to detect foreground tissue regions:
 ```
-python main.py
+python -m histoqc -c v2.1 -n 3 "*.ndpi" # "*.mrxs", "*.svs"
 ```
 This step yields:
 ```
@@ -45,13 +45,12 @@ python run_TC.py \
   --WSI /path/to/WSI/directory \
   --MASK /path/to/mask/directory \
   --TC_output /path/to/output/directory \
-  --WEIGHT /path/to/tissue_classifier_weights.h5 \
+  --WEIGHT data/MobileNet512px.h5 \
   --foreground_thes 0.7 \
   --patch_size 128 \
   --save_TCmap True \
   --free_space True \
 ```
-
 This step yields:
 ```
 prj_BreastAgeNet/
