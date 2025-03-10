@@ -68,7 +68,7 @@ prj_BreastAgeNet/
 │   └── ...
 ```
 
-Finally, use the following script to classify NBT tissue components:
+Finally, use the following script to localise ROIs:
 ```
 python run_bbx.py \
   --WSI /path/to/WSI/directory \
@@ -95,4 +95,4 @@ prj_BreastAgeNet/
 │   └── ...
 ```
 
-For a full implementation of **_NBT-Classifier_**, please refer to [notebook pipeline](pipeline.ipynb). 
+For a full implementation of **_NBT-Classifier_**, please take a look at [notebook pipeline](pipeline.ipynb). 
