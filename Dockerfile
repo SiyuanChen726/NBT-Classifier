@@ -10,7 +10,7 @@ WORKDIR /app
 COPY . /app
 
 # Create conda env
-RUN mamba env create -f /app/environment.yml && \
+RUN mamba env create -f /app/NBT-Classifier/environment.yml && \
     mamba clean -a
 
 # Activate environment on container startup
