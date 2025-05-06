@@ -55,7 +55,7 @@ singularity shell --nv \
 --writable-tmpfs \
 ./nbtclassifier_latest.sif
 ```
-
+the Host directory (/the/host/folder/project) is mounted to /app/project and the --writable-tmpfs ensures a temporary writable folder /tmp.
 Within the nbtclassifier docker container, you will see an app folder under "root":
 ```
 /app/
