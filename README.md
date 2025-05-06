@@ -142,6 +142,21 @@ This step yields:
 └── examples/
 
 ```
- 
+
+
+Alternatively, tessellating and classifying NBTs using larger patches of 1024x1024 pixels:
+```
+cd /app//NBT-Classifier
+python main.py \
+--wsi_folder /app/project/WSIs \
+--mask_folder /app/project/QCs \
+--output_folder /app/project/FEATUREs \
+--model_type TC_1024 \
+--patch_size_microns 256 \
+--use_multithreading \
+--max_workers 8
+```
+
+
  
 For a full implementation of **_NBT-Classifier_**, please take a look at [notebook pipeline](pipeline.ipynb). 
