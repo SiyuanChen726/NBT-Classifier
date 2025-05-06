@@ -198,7 +198,7 @@ python main.py \
 
 
 ## Jupyter notebooks
-The [notebooks](notebooks) demonstrating [NBT-Classifier framework](/notebooks/NBT_pipeline.ipynb), [manual annotation](/notebooks/vis_annotation.ipynb), [model interpretability](/notebooks/vis_CAMs.ipynb), and [feature visualisation](/notebooks/vis_features.ipynb) can be reproduced in the nbtclassifier Docker Image. 
+The notebooks demonstrating [NBT-Classifier framework](/notebooks/NBT_pipeline.ipynb), [manual annotation](/notebooks/vis_annotation.ipynb), [model interpretability](/notebooks/vis_CAMs.ipynb), and [feature visualisation](/notebooks/vis_features.ipynb) can be reproduced in the nbtclassifier Docker Image. 
 
 For this, within the nbtclassifier docker container, run the following:
 ```
