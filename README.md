@@ -44,9 +44,7 @@ project/
 └── FEATUREs/
 ```
 
-The nbtclassifier Docker image has an exposed volume (/app) that can be mapped to the host folder. For example, to mount the current directory:
-
-The following code launches Singularity container on a HPC GPU computation node with:
+The nbtclassifier Docker image has an exposed volume (/app) that can be mapped to the host folder. The following code launches Singularity container on a HPC GPU computation node with:
 - NVIDIA GPU support (--nv)
 - Host WSI directory mounted to /app/WSIs (--bind)
 - Temporary writable filesystem (--writable-tmpfs)
@@ -72,13 +70,18 @@ You will see an app folder under "root":
 ```
 
 ## Implementation using host data 
-Within the nbtclassifier docker container on HPC, first implement HistoQC to obtain masks of foreground tissue regions:
+Within the nbtclassifier docker container on HPC, manually activate conda environment via:
+```
+source /opt/conda/etc/profile.d/conda.sh
+conda activate nbtclassifier
+```
+
+Implement HistoQC to obtain masks of foreground tissue regions:
 ```
 cd /app/HistoQC
 python -m histoqc -c NBT -n 3 '/app/project/WSIs/*.ndpi' -o '/app/project/QCs'
 ```
 Note, change `.ndpi` into the exact format of the host WSI files
-
 
 This step yields:
 ```
@@ -155,14 +158,26 @@ python main.py \
 ## Implementation using example data 
 Within the nbtclassifier docker container on HPC, run HistoQC to obtain masks of foreground tissue regions:
 ```
+singularity shell --nv \ 
+--bind /the/host/folder:/app/project \
+--writable-tmpfs 
+./nbtclassifier_latest.sif
+
+source /opt/conda/etc/profile.d/conda.sh
+conda activate nbtclassifier
+
+mkdir /tmp/QCs /tmp/FEATUREs
+
 cd /app/HistoQC
-python -m histoqc -c NBT -n 3 '/app/examples/WSIs/*.ndpi' -o '/app/examples/QCs'
+python -m histoqc -c NBT -n 32 '/app/examples/WSIs/*.ndpi' -o '/app/project/QCs'
+
+python -m histoqc -c NBT -n 4 '/app/examples/QuPath/*.ndpi' -o '/tmp/QCs'
 
 cd /app//NBT-Classifier
 python main.py \
---wsi_folder /app/examples/WSIs \
---mask_folder /app/examples/QCs \
---output_folder /app/examples/FEATUREs \
+--wsi_folder /app/examples/QuPath \
+--mask_folder /tmp/QCs \
+--output_folder /tmp/FEATUREs \
 --model_type TC_512 \
 --patch_size_microns 128 \
 --use_multithreading \
