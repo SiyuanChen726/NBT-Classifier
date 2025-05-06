@@ -10,18 +10,42 @@
 </p>
 
 ## Installation
-To get started, clone the repository, install [HistoQC](https://github.com/choosehappy/HistoQC.git) and other required dependencies. 
-Then install NBT-Classifier:
+To get started, install [HistoQC](https://github.com/choosehappy/HistoQC.git) and NBT-Classifier:
 ```
+git clone https://github.com/choosehappy/HistoQC.git
 git clone https://github.com/SiyuanChen726/NBT-Classifier.git
 cd NBT-Classifier
 conda env create -f environment.yml
 conda activate nbtclassifier
 ```
 
-## Data structure
+## Docker
+NBT-Classifier supports Docker for reproducible analysis of user histology data, with tutorial examples for both command-line and Jupyter notebook workflows. 
 
-Data is expected to be organised as follows:
+To get the Docker:
+
+`docker pull siyuan726/nbtclassifier:latest`
+
+or use singularity for HPC
+
+`singularity pull docker://siyuan726/nbtclassifier:latest`
+
+The Docker Image has an exposed volume (/app) that can be mapped to the host system directory. For example, to mount the current directory:
+
+The following code launches Singularity container with:
+- NVIDIA GPU support (--nv)
+- Host WSI directory mounted to /app/WSIs (--bind)
+- Temporary writable filesystem (--writable-tmpfs)
+  
+```
+singularity shell --nv \ 
+--bind /the/host/WSI/directory:/app/WSIs \
+--writable-tmpfs 
+./nbtclassifier_latest.sif
+```
+
+
+You will see a CHIEF folder under "root". Data is expected to be organised as follows:
 ```
 project/
 ├── NBT-Classifier/
