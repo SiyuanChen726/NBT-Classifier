@@ -30,6 +30,16 @@ or use singularity for HPC
 
 `singularity pull docker://siyuan726/nbtclassifier:latest`
 
+
+Host data is expected to be organised as follows:
+```
+project/
+├── WSIs/slide1.ndpi, slide2.ndpi, slide3.svs, ...
+├── QCs/
+└── FEATUREs/
+```
+
+
 The Docker Image has an exposed volume (/app) that can be mapped to the host system directory. For example, to mount the current directory:
 
 The following code launches Singularity container with:
@@ -39,48 +49,66 @@ The following code launches Singularity container with:
   
 ```
 singularity shell --nv \ 
---bind /the/host/WSI/directory:/app/WSIs \
+--bind /the/host/WSI/directory:/app/project \
 --writable-tmpfs 
 ./nbtclassifier_latest.sif
 ```
 
 
-You will see a CHIEF folder under "root". Data is expected to be organised as follows:
+You will see an app folder under "root":
 ```
-project/
+/app/
 ├── NBT-Classifier/
 ├── HistoQC/
-└── project-data/
-    ├── WSIs/slide1.ndpi, slide2.ndpi, slide3.svs, ...
+├── Dockerfile
+├── project/
+|   ├── WSIs/host slides, such as slide1.ndpi, slide2.ndpi, slide3.svs, ...
+|   ├── QCs/
+|   └── FEATUREs/
+└── examples/
+    ├── WSIs/17064108_FPE_1.ndpi
     ├── QCs/
-    └── FEATUREs/
+    ├── FEATUREs/
+    ├── patch_examples/
+    ├── QuPath/
+    ├── TC512_tsne_HEOverlay.png  
+    └── NBTClassifier_512px_externaltesting.csv
 ```
 
-## Implementation
+## Implementation using host data 
 First, implement HistoQC to obtain masks of foreground tissue regions:
 ```
-cd ./HistoQC
-python -m histoqc -c NBT -n 3 '../project-data/WSIs/*.ndpi' -o '../project-data/QCs'
+cd /app/HistoQC
+python -m histoqc -c NBT -n 3 '/app/project/WSIs/*.ndpi' -o '/app/project/QCs'
 ```
+Note, change `.ndpi` into the exact format of the host WSI files
+
+
 This step yields:
 ```
-project/
+/app/
 ├── NBT-Classifier/
 ├── HistoQC/
-└── project-data/
-    ├── WSIs/slide1.ndpi, slide2.ndpi, slide3.svs, ...
-    ├── QCs/              
-    │   └── slide1/slide1_maskuse.png  
-    └── FEATUREs/         
+├── Dockerfile
+├── project/
+|   ├── WSIs/
+|   ├── QCs/
+|   │   |── slide1/slide1_maskuse.png, ... 
+|   │   |── slide2/slide2_maskuse.png, ...
+|   │   |── slide3/slide3_maskuse.png, ...
+|   │   └── ... 
+|   └── FEATUREs/
+└── examples/       
 ```
+
 
 Then, use the following script to classify NBT tissue components:
 ```
-cd ../NBT-Classifier
+cd /app//NBT-Classifier
 python main.py \
---wsi_folder ../project-data/WSIs \
---mask_folder ../project-data/QCs \
---output_folder ../project-data/FEATUREs \
+--wsi_folder /app/project/WSIs \
+--mask_folder /app/project/QCs \
+--output_folder /app/project/FEATUREs \
 --model_type TC_512 \
 --patch_size_microns 128 \
 --use_multithreading \
@@ -89,61 +117,30 @@ python main.py \
 
 This step yields:
 ```
-prj_BreastAgeNet/
-├── WSIs
-├── QC/KHP
-│   ├── slide1/slide1_maskuse.png
-│   └── ...
-├── Features/KHP
-│   ├── slide1/slide1_TC_512_probmask.npy     # This is the tissue classification results
-│   ├── slide1/slide1_TC_512.png              # This visualises the tissue classification map
-│   ├── slide1/slide1_TC_512_All.csv          # This saves all classified patches
-│   ├── slide1/slide1_TC_512_cls.json         # This imports all classified patches into QuPath using the annotation_loader.groovy script
-│   ├── slide1/slide1_TC_512_epi_(downsample,0,0,width,height)-mask.png      # This imports detected lobuels into QuPath using the mask2annotation.groovy script
-│   ├── slide1/slide1_TC_512_patch.csv        # This saves the selected patches
-│   ├── slide1/slide1_TC_512_ROIdetection.json     # This imports selected patches into QuPath using the annotation_loader.groovy script
-│   ├── slide1/slide1_TC_512_bbx.png          # This visualises the selected ROIs
-│   └── ...
-
-
-project/
+/app/
 ├── NBT-Classifier/
 ├── HistoQC/
-└── project-data/
-    ├── WSIs/slide1.ndpi, slide2.ndpi, slide3.svs, ...
-    ├── QCs/              
-    │   └── slide1/slide1_maskuse.png  
-    └── FEATUREs/
-        └── slide1/
-            ├──
-            ├──
-            ├──
-            ├──
-            ├──
-            ├──
-            ├──
-            ├──
-            └──
+├── Dockerfile
+├── project/
+|   ├── WSIs/
+|   ├── QCs/
+|   └── FEATUREs/
+|       |── slide1/
+│       |   ├──slide1_TC_512_pattern_x_idx.npy     
+│       |   ├──slide1_TC_512_pattern_y_idx.npy     
+│       |   ├──slide1_TC_512_pattern_im_shape.npy  
+│       |   ├──slide1_TC_512_pattern_patches.npy    
+│       |   ├──slide1_TC_512_probmask.npy                     # This contains the tissue classification results
+│       |   ├──slide1_TC_512.png                              # This visualises the tissue classification map
+│       |   ├──slide1_TC_512_patch_all.csv                    # This saves all classified patches
+│       |   ├──slide1_TC_512_cls_wsi.json                     # This imports all classified patches into QuPath via the annotation_loader.groovy script
+│       |   ├──slide1_TC_512_epi_(18,0,0,8704,6208)-mask.png  # This imports detected lobuels into QuPath via the mask2annotation.groovy script
+│       |   ├──slide1_TC_512_patch_roi.csv                    # This saves the selected patches from ROIs containing lobules and peri-lobular stroma
+│       |   ├──slide1_TC_512_cls_roi.json                     # This imports selected patches into QuPath using the annotation_loader.groovy script
+│       |   └──slide1_TC_512_bbx.png                          # This visualises the selected ROIs
+│       └── ...
+└── examples/
 
-
-'17064108_FPE_1.ndpi_epi_(18,0,0,8704,6208)-mask.png'
-
- 17064108_FPE_1_TC_512_All.csv
- 17064108_FPE_1_TC_512_bbx.png
- 17064108_FPE_1_TC_512_cls.json
- 17064108_FPE_1_TC_512_cls_roi.json
- 17064108_FPE_1_TC_512_cls_wsi.json
-'17064108_FPE_1_TC_512_epi_(18,0,0,8704,6208)-mask.png'
- 17064108_FPE_1_TC_512_patch_all.csv
- 17064108_FPE_1_TC_512_patch.csv
- 17064108_FPE_1_TC_512_patch_roi.csv
- 17064108_FPE_1_TC_512_pattern_im_shape.npy
- 17064108_FPE_1_TC_512_pattern_patches.npy
- 17064108_FPE_1_TC_512_pattern_x_idx.npy
- 17064108_FPE_1_TC_512_pattern_y_idx.npy
- 17064108_FPE_1_TC_512.png
- 17064108_FPE_1_TC_512_probmask.npy
- 17064108_FPE_1_TC_512_ROIdetection.json
 ```
  
  
