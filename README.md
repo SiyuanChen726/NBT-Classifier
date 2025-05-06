@@ -158,5 +158,17 @@ python main.py \
 ```
 
 
- 
-For a full implementation of **_NBT-Classifier_**, please take a look at [notebook pipeline](pipeline.ipynb). 
+The [notebooks](notebooks) demonstrating [NBT-Classifier framework](/notebooks/NBT_pipeline.ipynb), [manual annotation](/notebooks/vis_annotation.ipynb), [model interpretability](/notebooks/vis_CAMs.ipynb), and [feature visualisation](/notebooks/vis_features.ipynb) can be reproduced in the Docker. 
+For this, 
+
+```
+cd /app//NBT-Classifier
+# register the conda environment as a Jupyter kernel
+python -m ipykernel install \
+    --user \
+    --name=nbtclassifier \
+    --display-name="NBTClassifier"
+
+./run_jupyter.sh
+```
+
