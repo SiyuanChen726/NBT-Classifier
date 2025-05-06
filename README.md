@@ -46,11 +46,9 @@ project/
 └── FEATUREs/
 ```
 
-The nbtclassifier Docker image has an exposed volume (/app) that can be mapped to the host folder (such as project/). The following code launches Singularity container on a HPC GPU computation node with:
-- NVIDIA GPU support (--nv)
-- Host WSI directory mounted to /app/WSIs (--bind)
-- Temporary writable filesystem (--writable-tmpfs)
-  
+The nbtclassifier Docker image has an exposed volume (/app) that can be mapped to the host folder (such as project/). 
+
+The following code launches Singularity container on a HPC GPU computation node with NVIDIA GPU support (--nv):
 ```
 singularity shell --nv \ 
 --bind /the/host/folder/project:/app/project \
