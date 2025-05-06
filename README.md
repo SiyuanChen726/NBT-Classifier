@@ -66,13 +66,6 @@ You will see an app folder under "root":
 |   ├── QCs/
 |   └── FEATUREs/
 └── examples/
-    ├── WSIs/17064108_FPE_1.ndpi
-    ├── QCs/
-    ├── FEATUREs/
-    ├── patch_examples/
-    ├── QuPath/
-    ├── TC512_tsne_HEOverlay.png  
-    └── NBTClassifier_512px_externaltesting.csv
 ```
 
 ## Implementation using host data 
