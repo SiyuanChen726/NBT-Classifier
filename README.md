@@ -18,18 +18,23 @@ cd NBT-Classifier
 conda env create -f environment.yml
 conda activate nbtclassifier
 ```
+For detailed implementation, please refer to the Docker section below.
+
 
 ## Docker
 NBT-Classifier supports Docker for reproducible analysis of user histology data, with tutorial examples for both command-line and Jupyter notebook workflows. 
 
-To get the Docker:
+To get the Docker image:
 
-`docker pull siyuan726/nbtclassifier:latest`
+```
+docker pull siyuan726/nbtclassifier:latest
+```
 
 or use singularity for HPC
 
-`singularity pull docker://siyuan726/nbtclassifier:latest`
-
+```
+singularity pull docker://siyuan726/nbtclassifier:latest
+```
 
 Host data is expected to be organised as follows:
 ```
@@ -39,21 +44,19 @@ project/
 └── FEATUREs/
 ```
 
+The nbtclassifier Docker image has an exposed volume (/app) that can be mapped to the host folder. For example, to mount the current directory:
 
-The Docker Image has an exposed volume (/app) that can be mapped to the host system directory. For example, to mount the current directory:
-
-The following code launches Singularity container with:
+The following code launches Singularity container on a HPC GPU computation node with:
 - NVIDIA GPU support (--nv)
 - Host WSI directory mounted to /app/WSIs (--bind)
 - Temporary writable filesystem (--writable-tmpfs)
   
 ```
 singularity shell --nv \ 
---bind /the/host/WSI/directory:/app/project \
+--bind /the/host/folder:/app/project \
 --writable-tmpfs 
 ./nbtclassifier_latest.sif
 ```
-
 
 You will see an app folder under "root":
 ```
@@ -69,7 +72,7 @@ You will see an app folder under "root":
 ```
 
 ## Implementation using host data 
-First, implement HistoQC to obtain masks of foreground tissue regions:
+Within the nbtclassifier docker container on HPC, first implement HistoQC to obtain masks of foreground tissue regions:
 ```
 cd /app/HistoQC
 python -m histoqc -c NBT -n 3 '/app/project/WSIs/*.ndpi' -o '/app/project/QCs'
@@ -133,9 +136,7 @@ This step yields:
 │       |   └──slide1_TC_512_bbx.png                          # This visualises the selected ROIs
 │       └── ...
 └── examples/
-
 ```
-
 
 Alternatively, tessellating and classifying NBTs using larger patches of 1024x1024 pixels:
 ```
@@ -151,9 +152,17 @@ python main.py \
 ```
 
 
-The [notebooks](notebooks) demonstrating [NBT-Classifier framework](/notebooks/NBT_pipeline.ipynb), [manual annotation](/notebooks/vis_annotation.ipynb), [model interpretability](/notebooks/vis_CAMs.ipynb), and [feature visualisation](/notebooks/vis_features.ipynb) can be reproduced in the Docker. 
-For this, 
+## Implementation using example data 
+Within the nbtclassifier docker container on HPC, run HistoQC to obtain masks of foreground tissue regions:
+```
+cd /app/HistoQC
+python -m histoqc -c NBT -n 3 '/app/examples/WSIs/*.ndpi' -o '/app/examples/QCs'
+```
 
+
+## Jupyter notebooks
+The [notebooks](notebooks) demonstrating [NBT-Classifier framework](/notebooks/NBT_pipeline.ipynb), [manual annotation](/notebooks/vis_annotation.ipynb), [model interpretability](/notebooks/vis_CAMs.ipynb), and [feature visualisation](/notebooks/vis_features.ipynb) can be reproduced in the nbtclassifier Docker Image. 
+For this, within the nbtclassifier docker container, run the following:
 ```
 cd /app//NBT-Classifier
 # register the conda environment as a Jupyter kernel
@@ -164,4 +173,26 @@ python -m ipykernel install \
 
 ./run_jupyter.sh
 ```
+Please then check the notebooks in `/app/NBT-Classifier/notebooks`
+
+
+
+## QuPath
+The nbtclassifier Docker Image also provides examples for the use of QuPath. 
+Within the nbtclassifier docker container, please copy the `examples/QuPath` folder and required examples to the binded host folder using the code below:
+```
+# please execute the previous 'Implementation using example data' section to obtain the following outputs
+mv /app/examples/WSIs/17064108_FPE_1.ndpi /app/examples/QuPath/
+mv /app/examples/FEATUREs/17064108_FPE_1/17064108_FPE_1_TC_512_epi_(18,0,0,8704,6208)-mask.png /app/examples/QuPath/masks
+mv /app/examples/FEATUREs/17064108_FPE_1/17064108_FPE_1_TC_512_cls_wsi.json  /app/examples/QuPath/
+mv /app/examples/FEATUREs/17064108_FPE_1/17064108_FPE_1_TC_512_cls_roi.json  /app/examples/QuPath/
+
+cp -r /app/examples/QuPath/ /app/project/
+```
+
+Within QuPath, open the example WSI (you might need to relocate the file in your host folder)
+Go to `Automate` -> `Project scripts...` -> `mask2annotation` to load the binary lobule mask (17064108_FPE_1_TC_512_epi_(18,0,0,8704,6208)-mask.png)
+Go to `Automate` -> `Project scripts...` -> `annotation loader` to load the .json files (please make sure the Fill mode is enabled for detection)
+Moreover, import the `/app/examples/QuPath/annotations/17064108_FPE_1.geojson` into QuPath to see the manual annotation for the example slide.
+
 
