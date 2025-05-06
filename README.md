@@ -1,8 +1,9 @@
-# **A CNN-based _NBT-Classifier_ facilitates analysing different normal breast tissue compartments on whole slide images**
+# **Normal breast tissue classifiers assess large-scale tissue compartments with high accuracy**
 
 [Paper]() | [Cite]()
 
-**Abstract:** Whole slide images (WSIs) are digitized tissue slides increasingly adopted in clinical practice and serve as promising resources for histopathological research through advanced computational methods. Recognizing tissue compartments and identifying regions of interest (ROIs) are fundamental steps in WSI analysis. In contrast to breast cancer, tools for high-throughput analysis of WSIs derived from normal breast tissue (NBT) are limited, despite NBT being an emerging area of research for early detection. We collected 70 WSIs from multiple NBT resources and cohorts, along with pathologist-guided manual annotations, to develop a robust convolutional neural network (CNN)-based classification model, named _NBT-Classifier_, which categorizes three major tissue compartments: epithelium, stroma, and adipocytes. The two versions of _NBT-Classifier_, processing 512 x 512- and 1024 x 1024-pixel input patches, achieved accuracies of 0.965 and 0.977 across three external datasets, respectively. Two explainable AI visualization techniques confirmed the histopathological relevance of the high-attention patterns associated with predicting specific tissue classes. Additionally, we integrated a WSI pre-processing pipeline to localize lobules and peri-lobular regions in NBT, the output from which is also compatible with interactive visualization and built-in image analysis on the QuPath platform. The _NBT-Classifier_ and the accompanying pipeline will significantly reduce manual effort and enhance reproducibility for conducting advanced computational pathology (CPath) studies on large-scale NBT datasets.
+**Abstract:** Cancer research emphasises early detection, yet quantitative methods for normal tissue analysis remain limited. Digitised haematoxylin and eosin (H&E)-stained slides enable computational histopathology, but artificial intelligence (AI)-based analysis of normal breast tissue (NBT) in whole slide images (WSIs) remains scarce. We curated 70 WSIs of NBTs from multiple sources and cohorts with pathologist-guided manual annotations of epithelium, stroma, and adipocytes (https://github.com/cancerbioinformatics/OASIS). Using this dataset, we developed robust convolutional neural network (CNN)-based, patch-level classification models, named NBT-Classifiers, to tessellate and classify NBTs at different scales. Across three external cohorts, NBT-Classifiers trained on 128 x 128 µm and 256 x 256 µm patches achieved AUCs of 0.98–1.00. Two explainable AI-visualisation techniques confirmed the biological relevance of tissue class predictions. Moreover, NBT-Classifiers can be integrated into an end-to-end pre-processing framework to support efficient downstream image analysis in lobular regions. Their high compatibility with QuPath further enables broader application in studies of normal tissues, in the context of breast.
+
 
 <p align="center">
     <img src="data/NBT.png" width="100%">
@@ -10,89 +11,116 @@
 
 ## Installation
 To get started, clone the repository, install [HistoQC](https://github.com/choosehappy/HistoQC.git) and other required dependencies. 
+Then install NBT-Classifier:
 ```
 git clone https://github.com/SiyuanChen726/NBT-Classifier.git
 cd NBT-Classifier
 conda env create -f environment.yml
-conda activate tfgpu-env
+conda activate nbtclassifier
+```
+
+## Data structure
+
+Data is expected to be organised as follows:
+```
+project/
+├── NBT-Classifier/
+├── HistoQC/
+└── project-data/
+    ├── WSIs/slide1.ndpi, slide2.ndpi, slide3.svs, ...
+    ├── QCs/
+    └── FEATUREs/
 ```
 
 ## Implementation
-
-WSI data is expected to be organised as follows:
+First, implement HistoQC to obtain masks of foreground tissue regions:
 ```
-prj_BreastAgeNet/
-├── CLINIC/clinicData_all.csv
-├── WSIs
-│   ├── KHP/slide1.ndpi, slide2.ndpi ...
-│   ├── NKI/slide1.mrxs, ...
-│   ├── BCI/slide1.ndpi, ...
-│   ├── EPFL/slide1.vsi, ...
-│   └── SGK/slide1.svs, ...
-```
-
-First, implement HistoQC to detect foreground tissue regions:
-```
-python -m histoqc -c v2.1 -n 3 "*.ndpi" # "*.mrxs", "*.svs"
+cd ./HistoQC
+python -m histoqc -c NBT -n 3 '../project-data/WSIs/*.ndpi' -o '../project-data/QCs'
 ```
 This step yields:
 ```
-prj_BreastAgeNet/
-├── WSIs
-├── QC/KHP
-│   ├── slide1/slide1_maskuse.png
-│   └── ...
+project/
+├── NBT-Classifier/
+├── HistoQC/
+└── project-data/
+    ├── WSIs/slide1.ndpi, slide2.ndpi, slide3.svs, ...
+    ├── QCs/              
+    │   └── slide1/slide1_maskuse.png  
+    └── FEATUREs/         
 ```
 
 Then, use the following script to classify NBT tissue components:
 ```
-python run_TC.py \
-  --WSI /path/to/WSI/directory \
-  --MASK /path/to/mask/directory \
-  --TC_output /path/to/output/directory \
-  --WEIGHT data/MobileNet512px.h5 \
-  --foreground_thes 0.7 \
-  --patch_size 128 \
-  --save_TCmap True \
-  --free_space True \
-```
-This step yields:
-```
-prj_BreastAgeNet/
-├── WSIs
-├── QC/KHP
-│   ├── slide1/slide1_maskuse.png
-│   └── ...
-├── TC/KHP
-│   ├── slide1/slide1_TCmask.png
-│   └── ...
+cd ../NBT-Classifier
+python main.py \
+--wsi_folder ../project-data/WSIs \
+--mask_folder ../project-data/QCs \
+--output_folder ../project-data/FEATUREs \
+--model_type TC_512 \
+--patch_size_microns 128 \
+--use_multithreading \
+--max_workers 8
 ```
 
-Finally, use the following script to localise ROIs:
-```
-python run_bbx.py \
-  --WSI /path/to/WSI/directory \
-  --TC_output /path/to/output/directory \
-  --patch_size 128 \
-  --upsample 32 \
-  --small_objects 400000 \
-  --roi_width 250 \
-  --save_bbxpng \
-  --save_patchcsv
-```
 This step yields:
 ```
 prj_BreastAgeNet/
 ├── WSIs
 ├── QC/KHP
 │   ├── slide1/slide1_maskuse.png
-│   └── ...
-├── TC/KHP
-│   ├── slide1/slide1_TCmask.png
 │   └── ...
 ├── Features/KHP
-│   ├── slide1/slide1_patch.csv
+│   ├── slide1/slide1_TC_512_probmask.npy     # This is the tissue classification results
+│   ├── slide1/slide1_TC_512.png              # This visualises the tissue classification map
+│   ├── slide1/slide1_TC_512_All.csv          # This saves all classified patches
+│   ├── slide1/slide1_TC_512_cls.json         # This imports all classified patches into QuPath using the annotation_loader.groovy script
+│   ├── slide1/slide1_TC_512_epi_(downsample,0,0,width,height)-mask.png      # This imports detected lobuels into QuPath using the mask2annotation.groovy script
+│   ├── slide1/slide1_TC_512_patch.csv        # This saves the selected patches
+│   ├── slide1/slide1_TC_512_ROIdetection.json     # This imports selected patches into QuPath using the annotation_loader.groovy script
+│   ├── slide1/slide1_TC_512_bbx.png          # This visualises the selected ROIs
 │   └── ...
-```
 
+
+project/
+├── NBT-Classifier/
+├── HistoQC/
+└── project-data/
+    ├── WSIs/slide1.ndpi, slide2.ndpi, slide3.svs, ...
+    ├── QCs/              
+    │   └── slide1/slide1_maskuse.png  
+    └── FEATUREs/
+        └── slide1/
+            ├──
+            ├──
+            ├──
+            ├──
+            ├──
+            ├──
+            ├──
+            ├──
+            └──
+
+
+'17064108_FPE_1.ndpi_epi_(18,0,0,8704,6208)-mask.png'
+
+ 17064108_FPE_1_TC_512_All.csv
+ 17064108_FPE_1_TC_512_bbx.png
+ 17064108_FPE_1_TC_512_cls.json
+ 17064108_FPE_1_TC_512_cls_roi.json
+ 17064108_FPE_1_TC_512_cls_wsi.json
+'17064108_FPE_1_TC_512_epi_(18,0,0,8704,6208)-mask.png'
+ 17064108_FPE_1_TC_512_patch_all.csv
+ 17064108_FPE_1_TC_512_patch.csv
+ 17064108_FPE_1_TC_512_patch_roi.csv
+ 17064108_FPE_1_TC_512_pattern_im_shape.npy
+ 17064108_FPE_1_TC_512_pattern_patches.npy
+ 17064108_FPE_1_TC_512_pattern_x_idx.npy
+ 17064108_FPE_1_TC_512_pattern_y_idx.npy
+ 17064108_FPE_1_TC_512.png
+ 17064108_FPE_1_TC_512_probmask.npy
+ 17064108_FPE_1_TC_512_ROIdetection.json
+```
+ 
+ 
 For a full implementation of **_NBT-Classifier_**, please take a look at [notebook pipeline](pipeline.ipynb). 
