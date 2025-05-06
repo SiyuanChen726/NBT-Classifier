@@ -226,11 +226,15 @@ Please then check the notebooks in `/app/NBT-Classifier/notebooks`
 
 ## QuPath
 The nbtclassifier Docker Image also provides examples for the use of QuPath. 
+
 Within the nbtclassifier docker container, please copy the `/app/examples/QuPath` folder to the binded host folder (such as /app/project) using `cp -r /app/examples/QuPath /app/project/`
 
 Within QuPath, open the example WSI (you might need to relocate the file in your host folder)
+
 Go to `Automate` -> `Project scripts...` -> `mask2annotation` to load the binary lobule mask (17064108_FPE_1_TC_512_epi_(18,0,0,8704,6208)-mask.png)
+
 Go to `Automate` -> `Project scripts...` -> `annotation loader` to load the .json files (please make sure the Fill mode is enabled for detection)
+
 Moreover, import the `/app/examples/QuPath/annotations/17064108_FPE_1.geojson` into QuPath to see the manual annotation for the example slide.
 
 
