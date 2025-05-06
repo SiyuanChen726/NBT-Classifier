@@ -157,6 +157,26 @@ Within the nbtclassifier docker container on HPC, run HistoQC to obtain masks of
 ```
 cd /app/HistoQC
 python -m histoqc -c NBT -n 3 '/app/examples/WSIs/*.ndpi' -o '/app/examples/QCs'
+
+cd /app//NBT-Classifier
+python main.py \
+--wsi_folder /app/examples/WSIs \
+--mask_folder /app/examples/QCs \
+--output_folder /app/examples/FEATUREs \
+--model_type TC_512 \
+--patch_size_microns 128 \
+--use_multithreading \
+--max_workers 8
+
+# or
+python main.py \
+--wsi_folder /app/examples/WSIs \
+--mask_folder /app/examples/QCs \
+--output_folder /app/examples/FEATUREs \
+--model_type TC_1024 \
+--patch_size_microns 256 \
+--use_multithreading \
+--max_workers 8
 ```
 
 
