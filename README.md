@@ -69,20 +69,16 @@ Within the nbtclassifier docker container, you will see an app folder under "roo
     └── FEATUREs/
 ```
 
-
-Within the nbtclassifier docker container on HPC, manually activate conda environment via:
-```
-source /opt/conda/etc/profile.d/conda.sh
-conda activate nbtclassifier
-```
-
 Implement HistoQC to obtain masks of foreground tissue regions:
 ```
+# manually activate conda environment
+source /opt/conda/etc/profile.d/conda.sh
+conda activate nbtclassifier
+
 cd /app/HistoQC
 python -m histoqc -c NBT -n 3 '/app/project/WSIs/*.ndpi' -o '/app/project/QCs'
 ```
 Note, change `.ndpi` into the exact format of the host WSI files
-
 
 This step yields:
 ```
@@ -100,7 +96,6 @@ This step yields:
     │   └── ... 
     └── FEATUREs/     
 ```
-
 
 Then, use the following script to tessellate and classify NBT tissue components on WSIs:
 ```
